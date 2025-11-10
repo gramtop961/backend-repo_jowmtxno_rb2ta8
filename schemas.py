@@ -1,48 +1,43 @@
 """
-Database Schemas
+Database Schemas for Smart Indoor Air Quality Monitoring
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Each Pydantic model corresponds to a MongoDB collection (lowercased class name).
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Literal
+from datetime import datetime
 
-# Example schemas (replace with your own):
+class Device(BaseModel):
+    device_id: str = Field(..., description="Unique ID of the embedded device")
+    name: Optional[str] = Field(None, description="Friendly name")
+    location: Optional[str] = Field(None, description="Room or area")
+    power: bool = Field(True, description="Purifier power state")
+    mode: Literal["auto", "manual"] = Field("auto", description="Control mode")
+    fan_speed: int = Field(1, ge=0, le=5, description="Fan speed level 0-5")
+    last_seen: Optional[datetime] = Field(None, description="Last heartbeat timestamp")
 
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+class SensorReading(BaseModel):
+    device_id: str = Field(..., description="Source device ID")
+    pm2_5: float = Field(..., ge=0, description="PM2.5 ug/m3")
+    pm10: float = Field(..., ge=0, description="PM10 ug/m3")
+    co2: Optional[float] = Field(None, ge=0, description="CO2 ppm")
+    tvoc: Optional[float] = Field(None, ge=0, description="Total VOC ppb")
+    temperature: Optional[float] = Field(None, description="Celsius")
+    humidity: Optional[float] = Field(None, ge=0, le=100, description="Relative humidity %")
+    aqi: Optional[int] = Field(None, ge=0, le=500, description="Calculated AQI (approx)")
+    timestamp: Optional[datetime] = Field(None, description="Reading time")
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+class Thresholds(BaseModel):
+    device_id: Optional[str] = Field(None, description="If set, thresholds scoped to a device")
+    pm2_5_good: float = Field(12.0, ge=0)
+    pm2_5_moderate: float = Field(35.4, ge=0)
+    pm10_good: float = Field(54.0, ge=0)
+    co2_max: float = Field(1200.0, ge=0)
+    tvoc_max: float = Field(500.0, ge=0)
 
-# Add your own schemas here:
-# --------------------------------------------------
-
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class DeviceCommand(BaseModel):
+    device_id: str
+    power: Optional[bool] = None
+    mode: Optional[Literal["auto", "manual"]] = None
+    fan_speed: Optional[int] = Field(None, ge=0, le=5)
